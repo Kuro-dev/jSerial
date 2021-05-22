@@ -1,3 +1,5 @@
+notes for self:
+
 length of object 04b
 
 type 01b
