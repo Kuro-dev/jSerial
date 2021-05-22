@@ -1,9 +1,5 @@
-notes for self:
+Just a simple little serialization framework I made for fun.
 
-length of object 04b
-
-type 01b
-
-
-encoded String length 4byte
+note: the name of the fields in a class should not be changed
+if this is to be used to write to Files.
 
