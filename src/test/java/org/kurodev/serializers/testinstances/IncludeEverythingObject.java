@@ -12,7 +12,23 @@ public class IncludeEverythingObject {
     boolean aBoolean = true;
     byte aByte = Byte.MAX_VALUE;
     char aChar = Character.MAX_VALUE;
-    String string = "testString";
+    String string = "0000testString";
+
+    @Override
+    public String toString() {
+        return "IncludeEverythingObject{" +
+                "aDouble=" + aDouble +
+                ", aFloat=" + aFloat +
+                ", anInt=" + anInt +
+                ", anotherInt=" + anotherInt +
+                ", aShort=" + aShort +
+                ", aLong=" + aLong +
+                ", aBoolean=" + aBoolean +
+                ", aByte=" + aByte +
+                ", aChar=" + aChar +
+                ", string='" + string + '\'' +
+                '}';
+    }
 
     @Override
     public boolean equals(Object o) {

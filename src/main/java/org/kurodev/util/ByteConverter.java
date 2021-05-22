@@ -5,12 +5,15 @@ import java.nio.charset.StandardCharsets;
 
 public class ByteConverter {
     public static byte[] write(int i) {
-        return ByteBuffer.allocate(4).putInt(i).array();
+        return ByteBuffer.allocate(Integer.BYTES).putInt(i).array();
+    }
+
+    public static byte[] write(char i) {
+        return ByteBuffer.allocate(Character.BYTES).putChar(i).array();
     }
 
     public static byte[] write(long i) {
         return ByteBuffer.allocate(Long.BYTES).putLong(i).array();
-
     }
 
     public static byte[] write(float i) {

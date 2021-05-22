@@ -50,7 +50,7 @@ public class DataReader extends Serializer {
     }
 
     public char readChar() throws IOException {
-        return (char) in.read();
+        return ByteBuffer.wrap(read(DataType.CHAR)).getChar();
     }
 
     public String readString() throws IOException {

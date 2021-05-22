@@ -3,18 +3,16 @@ package org.kurodev.serializers;
 import org.kurodev.DataType;
 import org.kurodev.serializers.exception.FailHandler;
 import org.kurodev.serializers.exception.RecursiveDebthException;
-import org.kurodev.util.ByteConverter;
 import org.objenesis.Objenesis;
 import org.objenesis.ObjenesisStd;
 import org.objenesis.instantiator.ObjectInstantiator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import sun.misc.Unsafe;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.lang.reflect.Field;
+import java.util.Arrays;
+import java.util.Comparator;
 
 public class ObjectSerializer {
     public static final int DEFAULT_MAX_DEBTH = 15;
@@ -39,38 +37,72 @@ public class ObjectSerializer {
         this.failHandler = failHandler;
     }
 
-    public byte[] write(Object obj) {
-        return write(obj, 0);
+    private Field[] getFieldsSorted(Class<?> clazz) {
+        Field[] fields = clazz.getDeclaredFields();
+        Arrays.sort(fields, Comparator.comparing(Field::getName));
+        return fields;
     }
 
-    public byte[] write(Object obj, int debth) {
+    public byte[] write(Object obj) {
+        var bos = new ByteArrayOutputStream();
+        write(obj, bos, 0);
+        return bos.toByteArray();
+    }
+
+    public void write(Object obj, OutputStream out) {
+        write(obj, out, 0);
+    }
+
+    public void write(Object obj, OutputStream out, int debth) {
         if (debth > maxDebth) {
             throw new RecursiveDebthException(String.format("Maximum recursive debth has been surpassed. current:%d, maximum:%d", debth, maxDebth));
         }
-        var bos = new ByteArrayOutputStream();
-        var serializer = new DataTypeIgnoringDataWriter(bos);
-        Field[] fields = obj.getClass().getDeclaredFields();
+        var serializer = new DataTypeIgnoringDataWriter(out);
+        Field[] fields = getFieldsSorted(obj.getClass());
         for (Field field : fields) {
             boolean wasAccessible = field.canAccess(obj);
             try {
                 field.setAccessible(true);
                 Object value = field.get(obj);
                 writeValue(value, serializer);
-
             } catch (IllegalAccessException | IOException e) {
                 failHandler.onException(e);
             } finally {
                 field.setAccessible(wasAccessible);
             }
         }
-        byte[] written = bos.toByteArray();
-        byte[] size = ByteConverter.write(written.length);
         try {
             serializer.close();
+            out.flush();
         } catch (IOException e) {
             failHandler.onException(e);
         }
-        return ByteConverter.combine(size, written);
+    }
+
+    public <T> T read(byte[] bytes, Class<T> type) {
+        return read(new ByteArrayInputStream(bytes), type);
+    }
+
+    public <T> T read(InputStream in, Class<T> type) {
+        Objenesis objenesis = new ObjenesisStd();
+        var reader = new DataReader(in);
+        try {
+            ObjectInstantiator<T> inst = objenesis.getInstantiatorOf(type);
+            T obj = inst.newInstance();
+            for (Field field : getFieldsSorted(type)) {
+                boolean access = field.canAccess(obj);
+                field.setAccessible(true);
+                Class<?> fieldType = field.getType();
+                Object value = readValue(fieldType, reader);
+                field.set(obj, value);
+                field.setAccessible(access);
+            }
+            reader.close();
+            return obj;
+        } catch (IOException | IllegalAccessException e) {
+            failHandler.onException(e);
+        }
+        return null;
     }
 
     private void writeValue(Object value, DataTypeIgnoringDataWriter serializer) throws IOException {
@@ -112,30 +144,6 @@ public class ObjectSerializer {
         } else {
             throw new IllegalArgumentException("Unsupported type: " + dataType);
         }
-        return dataType.cast(out);
-    }
-
-    public <T> T read(byte[] bytes, Class<T> type) {
-        var bis = new ByteArrayInputStream(bytes);
-        var reader = new DataReader(bis);
-        try {
-            Objenesis objenesis = new ObjenesisStd();
-            ObjectInstantiator<T> inst = objenesis.getInstantiatorOf(type);
-            T obj = inst.newInstance();
-            for (Field field : type.getFields()) {
-                boolean access = field.canAccess(obj);
-                field.setAccessible(true);
-                Class<?> fieldType = field.getType();
-                Object value = readValue(fieldType, reader);
-                field.set(obj, value);
-                field.setAccessible(access);
-            }
-            Unsafe.getUnsafe().allocateInstance(type);
-            reader.close();
-            return obj;
-        } catch (InstantiationException | IOException | IllegalAccessException e) {
-            failHandler.onException(e);
-        }
-        return null;
+        return (T) out;
     }
 }

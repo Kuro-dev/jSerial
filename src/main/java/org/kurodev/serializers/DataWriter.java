@@ -37,7 +37,7 @@ public class DataWriter extends Serializer implements Flushable {
     }
 
     public void write(char val) throws IOException {
-        write(DataType.CHAR, (byte) val);
+        write(DataType.CHAR, ByteConverter.write(val));
     }
 
     public void write(double val) throws IOException {

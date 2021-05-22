@@ -2,22 +2,22 @@ package org.kurodev;
 
 
 public enum DataType {
-    BOOLEAN(1, Boolean.class),
-    BYTE(Byte.BYTES, Byte.class),
-    CHAR(Character.BYTES, Character.class),
-    DOUBLE(Double.BYTES, Double.class),
-    FLOAT(Float.BYTES, Float.class),
-    INTEGER(Integer.BYTES, Integer.class),
-    LONG(Long.BYTES, Long.class),
-    SHORT(Short.BYTES, Short.class),
+    BOOLEAN(1, Boolean.class, boolean.class),
+    BYTE(Byte.BYTES, Byte.class, byte.class),
+    CHAR(Character.BYTES, Character.class, char.class),
+    DOUBLE(Double.BYTES, Double.class, double.class),
+    FLOAT(Float.BYTES, Float.class, float.class),
+    INTEGER(Integer.BYTES, Integer.class, int.class),
+    LONG(Long.BYTES, Long.class, long.class),
+    SHORT(Short.BYTES, Short.class, short.class),
     STRING(-1, String.class);
 
     private final int size;
-    private final Class<?> clazz;
+    private final Class<?>[] clazzes;
 
-    DataType(int size, Class<?> clazz) {
+    DataType(int size, Class<?>... clazzes) {
         this.size = size;
-        this.clazz = clazz;
+        this.clazzes = clazzes;
     }
 
     public static DataType identify(int rByte) {
@@ -31,8 +31,11 @@ public enum DataType {
 
     public static DataType identify(Class<?> clazz) {
         for (DataType value : values()) {
-            if (value.clazz == clazz) {
-                return value;
+            for (Class<?> aClass : value.clazzes) {
+                if (aClass == clazz) {
+                    return value;
+                }
+
             }
         }
         return null;
