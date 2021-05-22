@@ -4,6 +4,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.kurodev.serializers.testinstances.*;
 
+import java.util.Arrays;
+
 import static org.junit.Assert.assertArrayEquals;
 
 public class ObjectSerializerTest {
@@ -52,7 +54,7 @@ public class ObjectSerializerTest {
     @Test
     public void writeCharTest() {
         byte[] written = serializer.write(new CharObject());
-        byte[] expected = new byte[]{0,0x1f};
+        byte[] expected = new byte[]{0, 0x1f};
         assertArrayEquals(expected, written);
     }
 
@@ -71,6 +73,12 @@ public class ObjectSerializerTest {
                 0x74, 0x68, 0x69, 0x73, 0x20, 0x69, 0x73, 0x20, 0x61, 0x20, 0x74, 0x65, 0x73, 0x74,
                 0x20, 0x73, 0x74, 0x72, 0x69, 0x6e, 0x67, (byte) 0xf0, (byte) 0x9f, (byte) 0x98, (byte) 0x8a};
         assertArrayEquals(expected, written);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void illegalTypeThrowsExceptionTest() {
+        byte[] written = serializer.write(new IllegalTypeClass());
+        System.out.println(Arrays.toString(written));
     }
 
 }

@@ -126,6 +126,8 @@ public class ObjectSerializer {
                 case STRING -> serializer.write((String) value);
                 default -> throw new IllegalArgumentException("Unexpected value: " + type);
             }
+        }else {
+            throw new IllegalArgumentException("Unsupported type: " + value.getClass());
         }
     }
 
