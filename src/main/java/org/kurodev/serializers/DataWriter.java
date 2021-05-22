@@ -71,11 +71,12 @@ public class DataWriter extends Serializer implements Flushable {
     }
 
     public void write(DataType type, byte... bytes) throws IOException {
-        byte[] metaData = new byte[]{(byte) type.ordinal()};
+        byte[] metaData = new byte[0];
         if (type == DataType.STRING) {
-            metaData = ByteConverter.combine(metaData, ByteConverter.write(bytes.length));
+            metaData = ByteConverter.write(bytes.length);
         }
-        out.write(metaData);
+        if (metaData.length > 0)
+            out.write(metaData);
         out.write(bytes);
     }
 

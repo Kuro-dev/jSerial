@@ -58,7 +58,7 @@ public class ObjectSerializer {
         if (debth > maxDebth) {
             throw new RecursiveDebthException(String.format("Maximum recursive debth has been surpassed. current:%d, maximum:%d", debth, maxDebth));
         }
-        var serializer = new DataTypeIgnoringDataWriter(out);
+        var serializer = new DataWriter(out);
         Field[] fields = getFieldsSorted(obj.getClass());
         for (Field field : fields) {
             if (field.isAnnotationPresent(Exclude.class))
@@ -110,7 +110,7 @@ public class ObjectSerializer {
         return null;
     }
 
-    private void writeValue(Object value, DataTypeIgnoringDataWriter serializer) throws IOException {
+    private void writeValue(Object value, DataWriter serializer) throws IOException {
         //TODO replace with switch in java 17
         DataType type = DataType.identify(value);
         if (type != null) {
