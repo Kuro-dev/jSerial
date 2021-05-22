@@ -1,6 +1,7 @@
 package org.kurodev.serializers;
 
 import org.kurodev.DataType;
+import org.kurodev.serializers.exception.Exclude;
 import org.kurodev.serializers.exception.FailHandler;
 import org.kurodev.serializers.exception.RecursiveDebthException;
 import org.objenesis.Objenesis;
@@ -60,6 +61,8 @@ public class ObjectSerializer {
         var serializer = new DataTypeIgnoringDataWriter(out);
         Field[] fields = getFieldsSorted(obj.getClass());
         for (Field field : fields) {
+            if (field.isAnnotationPresent(Exclude.class))
+                continue;
             boolean wasAccessible = field.canAccess(obj);
             try {
                 field.setAccessible(true);
@@ -90,6 +93,8 @@ public class ObjectSerializer {
             ObjectInstantiator<T> inst = objenesis.getInstantiatorOf(type);
             T obj = inst.newInstance();
             for (Field field : getFieldsSorted(type)) {
+                if (field.isAnnotationPresent(Exclude.class))
+                    continue;
                 boolean access = field.canAccess(obj);
                 field.setAccessible(true);
                 Class<?> fieldType = field.getType();
