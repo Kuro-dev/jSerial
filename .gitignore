@@ -1,0 +1,7 @@
+settings.properties
+*.iml
+.idea
+dependency-reduced-pom.xml
+target
+insults.txt
+RPSOutcomes.json
