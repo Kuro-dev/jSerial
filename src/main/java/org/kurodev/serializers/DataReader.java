@@ -10,7 +10,7 @@ import java.nio.charset.StandardCharsets;
 public class DataReader extends Serializer {
     private final InputStream in;
 
-    public DataReader(InputStream in) {
+    DataReader(InputStream in) {
         this.in = in;
     }
 

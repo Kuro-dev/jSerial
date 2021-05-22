@@ -1,7 +1,6 @@
 package org.kurodev.serializers;
 
 import org.kurodev.DataType;
-import org.kurodev.serializers.exception.FailHandler;
 import org.kurodev.util.ByteConverter;
 
 import java.io.Flushable;
@@ -12,16 +11,11 @@ import java.nio.charset.StandardCharsets;
 public class DataWriter extends Serializer implements Flushable {
     protected final OutputStream out;
 
-    public DataWriter(OutputStream out, FailHandler<Exception> failHandler) {
-        this.out = out;
-    }
-
     /**
      * @param out The output stream to write to
-     * @apiNote will write any exception to console.
      */
-    public DataWriter(OutputStream out) {
-        this(out, null);
+    DataWriter(OutputStream out) {
+        this.out = out;
     }
 
     public void write(boolean bool) throws IOException {

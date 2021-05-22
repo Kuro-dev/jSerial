@@ -75,8 +75,8 @@ public class ObjectSerializer {
             }
         }
         try {
-            serializer.close();
             out.flush();
+            serializer.close();
         } catch (IOException e) {
             failHandler.onException(e);
         }
