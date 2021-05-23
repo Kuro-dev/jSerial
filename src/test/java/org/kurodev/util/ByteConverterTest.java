@@ -39,7 +39,7 @@ public class ByteConverterTest {
 
     @Test
     public void writeShortTest() {
-        short input = (short) 0xff;
+        short input = (short) 0x00ff;
         byte[] expected = new byte[]{(byte) 0x00, (byte) 0xff};
         byte[] converted = ByteConverter.write(input);
         Assert.assertArrayEquals(expected, converted);
