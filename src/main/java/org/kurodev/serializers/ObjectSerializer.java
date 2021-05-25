@@ -38,6 +38,10 @@ public class ObjectSerializer {
         this.failHandler = failHandler;
     }
 
+    public int getMaxDebth() {
+        return maxDebth;
+    }
+
     private Field[] getFieldsSorted(Class<?> clazz) {
         Field[] fields = clazz.getDeclaredFields();
         Arrays.sort(fields, Comparator.comparing(Field::getName));
@@ -46,19 +50,18 @@ public class ObjectSerializer {
 
     public byte[] write(Object obj) {
         var bos = new ByteArrayOutputStream();
-        write(obj, bos, 0);
+        write(obj, bos);
         return bos.toByteArray();
     }
 
     public void write(Object obj, OutputStream out) {
-        write(obj, out, 0);
+        write(obj, new DataWriter(out), 0);
     }
 
-    public void write(Object obj, OutputStream out, int debth) {
+    public void write(Object obj, DataWriter serializer, int debth) {
         if (debth > maxDebth) {
             throw new RecursiveDebthException(String.format("Maximum recursive debth has been surpassed. current:%d, maximum:%d", debth, maxDebth));
         }
-        var serializer = new DataWriter(out);
         Field[] fields = getFieldsSorted(obj.getClass());
         for (Field field : fields) {
             if (field.isAnnotationPresent(Exclude.class))
@@ -67,7 +70,7 @@ public class ObjectSerializer {
             try {
                 field.setAccessible(true);
                 Object value = field.get(obj);
-                writeValue(value, serializer);
+                writeValue(value, serializer, debth);
             } catch (IllegalAccessException | IOException e) {
                 failHandler.onException(e);
             } finally {
@@ -75,8 +78,7 @@ public class ObjectSerializer {
             }
         }
         try {
-            out.flush();
-            serializer.close();
+            serializer.flush();
         } catch (IOException e) {
             failHandler.onException(e);
         }
@@ -87,8 +89,14 @@ public class ObjectSerializer {
     }
 
     public <T> T read(InputStream in, Class<T> type) {
+        return read(new DataReader(in), type, 0);
+    }
+
+    private <T> T read(DataReader reader, Class<T> type, int debth) {
+        if (debth > maxDebth) {
+            throw new RecursiveDebthException(String.format("Maximum recursive debth has been surpassed. current:%d, maximum:%d", debth, maxDebth));
+        }
         Objenesis objenesis = new ObjenesisStd();
-        var reader = new DataReader(in);
         try {
             ObjectInstantiator<T> inst = objenesis.getInstantiatorOf(type);
             T obj = inst.newInstance();
@@ -98,7 +106,7 @@ public class ObjectSerializer {
                 boolean access = field.canAccess(obj);
                 field.setAccessible(true);
                 Class<?> fieldType = field.getType();
-                Object value = readValue(fieldType, reader);
+                Object value = readValue(fieldType, reader, debth);
                 field.set(obj, value);
                 field.setAccessible(access);
             }
@@ -110,7 +118,7 @@ public class ObjectSerializer {
         return null;
     }
 
-    private void writeValue(Object value, DataWriter serializer) throws IOException {
+    private void writeValue(Object value, DataWriter serializer, int debth) throws IOException {
         //TODO replace with switch in java 17
         DataType type = DataType.identify(value);
         if (type != null) {
@@ -124,6 +132,7 @@ public class ObjectSerializer {
                 case LONG -> serializer.write((long) value);
                 case SHORT -> serializer.write((short) value);
                 case STRING -> serializer.write((String) value);
+                case OBJECT -> this.write(value, serializer, ++debth);
                 default -> throw new IllegalArgumentException("Unexpected value: " + type);
             }
         } else {
@@ -131,7 +140,7 @@ public class ObjectSerializer {
         }
     }
 
-    private <T> T readValue(Class<T> dataType, DataReader reader) throws IOException {
+    private <T> T readValue(Class<T> dataType, DataReader reader, int debth) throws IOException {
         //TODO replace with switch in java 17
         DataType type = DataType.identify(dataType);
         Object out;
@@ -146,6 +155,7 @@ public class ObjectSerializer {
                 case LONG -> out = reader.readLong();
                 case SHORT -> out = reader.readShort();
                 case STRING -> out = reader.readString();
+                case OBJECT -> out = read(reader, dataType, ++debth);
                 default -> throw new IllegalStateException("Unexpected value: " + type);
             }
         } else {

@@ -9,6 +9,7 @@ public enum DataType {
     FLOAT(Float.BYTES, Float.class, float.class),
     INTEGER(Integer.BYTES, Integer.class, int.class),
     LONG(Long.BYTES, Long.class, long.class),
+    OBJECT(-1, Object.class),
     SHORT(Short.BYTES, Short.class, short.class),
     STRING(-1, String.class);
 
@@ -32,13 +33,13 @@ public enum DataType {
     public static DataType identify(Class<?> clazz) {
         for (DataType value : values()) {
             for (Class<?> aClass : value.clazzes) {
-                if (aClass == clazz) {
+                if (clazz == aClass) {
                     return value;
                 }
 
             }
         }
-        return null;
+        return OBJECT;
     }
 
     public static DataType identify(Object obj) {

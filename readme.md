@@ -5,4 +5,3 @@ Thats pretty much it. There isn't much to this project.
 
 note: the name of the fields in a class should not be changed
 if this is to be used to write to Files.
-

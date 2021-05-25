@@ -1,10 +1,12 @@
 package org.kurodev.serializers;
 
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.kurodev.serializers.exception.RecursiveDebthException;
 import org.kurodev.serializers.testinstances.*;
-
-import java.util.Arrays;
+import org.kurodev.serializers.testinstances.recursion.LegalRecursiveObject;
+import org.kurodev.serializers.testinstances.recursion.RecursiveObject;
 
 import static org.junit.Assert.assertArrayEquals;
 
@@ -75,10 +77,29 @@ public class ObjectSerializerTest {
         assertArrayEquals(expected, written);
     }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void illegalTypeThrowsExceptionTest() {
+    @Test
+    public void excludedIllegalTypeShouldNotThrowExceptionTest() {
         byte[] written = serializer.write(new IllegalTypeClass());
-        System.out.println(Arrays.toString(written));
+        Assert.assertArrayEquals(new byte[0], written);
+    }
+
+    @Test
+    public void writeObjectInstanceTest() {
+        byte[] written = serializer.write(new InstanceWithObjects());
+        byte[] expected = new byte[]{(byte) 0xaa, (byte) 0xbb, (byte) 0xcc, (byte) 0xdd, 0x0, 0x0, 0x0, (byte) 0xff};
+        assertArrayEquals(expected, written);
+    }
+
+    @Test(expected = RecursiveDebthException.class)
+    public void maxRecursionShouldThrowRecursiveDebthExceptionTest() {
+        serializer = new ObjectSerializer(2);
+        serializer.write(new RecursiveObject());
+    }
+
+    @Test()
+    public void maxRecursionShouldNotThrowRecursiveDebthExceptionTest() {
+        serializer = new ObjectSerializer(2);
+        serializer.write(new LegalRecursiveObject());
     }
 
 }
