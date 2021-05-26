@@ -11,9 +11,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
+import java.lang.reflect.Array;
 import java.lang.reflect.Field;
-import java.util.Arrays;
-import java.util.Comparator;
+import java.util.*;
 
 public class ObjectSerializer {
     public static final int DEFAULT_MAX_DEBTH = 15;
@@ -38,6 +38,17 @@ public class ObjectSerializer {
         this.failHandler = failHandler;
     }
 
+    private static int size(Iterable<?> iterable) {
+        if (iterable instanceof Collection) {
+            return ((Collection<?>) iterable).size();
+        }
+        int counter = 0;
+        for (Object i : iterable) {
+            counter++;
+        }
+        return counter;
+    }
+
     public int getMaxDebth() {
         return maxDebth;
     }
@@ -58,23 +69,31 @@ public class ObjectSerializer {
         write(obj, new DataWriter(out), 0);
     }
 
-    public void write(Object obj, DataWriter serializer, int debth) {
+    void write(Object obj, DataWriter serializer, int debth) {
         if (debth > maxDebth) {
             throw new RecursiveDebthException(String.format("Maximum recursive debth has been surpassed. current:%d, maximum:%d", debth, maxDebth));
         }
-        Field[] fields = getFieldsSorted(obj.getClass());
-        for (Field field : fields) {
-            if (field.isAnnotationPresent(Exclude.class))
-                continue;
-            boolean wasAccessible = field.canAccess(obj);
+        if (DataType.identify(obj) != DataType.OBJECT) {
             try {
-                field.setAccessible(true);
-                Object value = field.get(obj);
-                writeValue(value, serializer, debth);
-            } catch (IllegalAccessException | IOException e) {
+                writeValue(obj, serializer, debth);
+            } catch (IOException e) {
                 failHandler.onException(e);
-            } finally {
-                field.setAccessible(wasAccessible);
+            }
+        } else {
+            Field[] fields = getFieldsSorted(obj.getClass());
+            for (Field field : fields) {
+                if (field.isAnnotationPresent(Exclude.class))
+                    continue;
+                boolean wasAccessible = field.canAccess(obj);
+                try {
+                    field.setAccessible(true);
+                    Object value = field.get(obj);
+                    writeValue(value, serializer, debth);
+                } catch (IllegalAccessException | IOException e) {
+                    failHandler.onException(e);
+                } finally {
+                    field.setAccessible(wasAccessible);
+                }
             }
         }
         try {
@@ -95,6 +114,13 @@ public class ObjectSerializer {
     private <T> T read(DataReader reader, Class<T> type, int debth) {
         if (debth > maxDebth) {
             throw new RecursiveDebthException(String.format("Maximum recursive debth has been surpassed. current:%d, maximum:%d", debth, maxDebth));
+        }
+        if (DataType.identify(type) != DataType.OBJECT) {
+            try {
+                return readValue(type, reader, debth);
+            } catch (IOException e) {
+                failHandler.onException(e);
+            }
         }
         Objenesis objenesis = new ObjenesisStd();
         try {
@@ -121,7 +147,11 @@ public class ObjectSerializer {
     private void writeValue(Object value, DataWriter serializer, int debth) throws IOException {
         //TODO replace with switch in java 17
         DataType type = DataType.identify(value);
-        if (type != null) {
+        if (value.getClass().isArray()) {
+            writeArray(convertToObjectArray(value), serializer, debth);
+        } else if (value instanceof Iterable) {
+            writeIterable((Iterable<?>) value, serializer, debth);
+        } else if (type != null) {
             switch (type) {
                 case BOOLEAN -> serializer.write((boolean) value);
                 case BYTE -> serializer.writeByte((byte) value);
@@ -137,6 +167,36 @@ public class ObjectSerializer {
             }
         } else {
             throw new IllegalArgumentException("Unsupported type: " + value.getClass());
+        }
+    }
+
+    private void writeIterable(Iterable<?> iterable, DataWriter serializer, int debth) throws IOException {
+        int length = size(iterable);
+        writeValue(length, serializer, debth);
+        for (Object o : iterable) {
+            write(o, serializer, debth);
+        }
+    }
+
+    private void writeArray(Object[] array, DataWriter serializer, int debth) throws IOException {
+        int length = array.length;
+        writeValue(length, serializer, debth);
+        for (Object object : array) {
+            write(object, serializer, debth);
+        }
+    }
+
+    private Object[] convertToObjectArray(Object array) {
+        Class<?> ofArray = array.getClass().getComponentType();
+        if (ofArray.isPrimitive()) {
+            List ar = new ArrayList();
+            int length = Array.getLength(array);
+            for (int i = 0; i < length; i++) {
+                ar.add(Array.get(array, i));
+            }
+            return ar.toArray();
+        } else {
+            return (Object[]) array;
         }
     }
 
@@ -156,11 +216,35 @@ public class ObjectSerializer {
                 case SHORT -> out = reader.readShort();
                 case STRING -> out = reader.readString();
                 case OBJECT -> out = read(reader, dataType, ++debth);
+                case COLLECTION -> out = readCollection(dataType, reader, debth);
+                case ARRAY -> out = readArray(dataType.getComponentType(), reader, debth);
                 default -> throw new IllegalStateException("Unexpected value: " + type);
             }
         } else {
             throw new IllegalArgumentException("Unsupported type: " + dataType);
         }
         return (T) out;
+    }
+
+    public Object readArray(Class<?> componentType, DataReader reader, int debth) throws IOException {
+        int length = reader.readInt();
+        Object array = Array.newInstance(componentType, length);
+        for (int i = 0; i < length; i++) {
+            Array.set(array, i, read(reader, componentType, debth));
+        }
+        return array;
+    }
+
+    @SuppressWarnings("unchecked")
+    //Does not work yet
+    public <T> Collection<T> readCollection(Class<?> type, DataReader reader, int debth) throws IOException {
+        Class<T> componentType = (Class<T>) type.getComponentType();
+        int length = reader.readInt();
+        Objenesis objenesis = new ObjenesisStd();
+        Collection<T> collection = (Collection<T>) objenesis.newInstance(type);
+        for (int i = 0; i < length; i++) {
+            collection.add(readValue(componentType, reader, debth));
+        }
+        return collection;
     }
 }

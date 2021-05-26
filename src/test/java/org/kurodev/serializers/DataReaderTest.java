@@ -6,6 +6,8 @@ import org.junit.Test;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 
+import static org.junit.Assert.assertArrayEquals;
+
 public class DataReaderTest {
 
     @Test

@@ -2,13 +2,18 @@ package org.kurodev.serializers;
 
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.kurodev.serializers.exception.RecursiveDebthException;
 import org.kurodev.serializers.testinstances.*;
 import org.kurodev.serializers.testinstances.recursion.LegalRecursiveObject;
 import org.kurodev.serializers.testinstances.recursion.RecursiveObject;
 
+import java.util.Arrays;
+import java.util.List;
+
 import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 
 public class ObjectSerializerTest {
     private ObjectSerializer serializer;
@@ -90,6 +95,14 @@ public class ObjectSerializerTest {
         assertArrayEquals(expected, written);
     }
 
+    @Test
+    public void writePrimitiveTest() {
+        int input = 0x00ff00ff;
+        byte[] written = serializer.write(input);
+        byte[] expected = new byte[]{0x00, (byte) 0xff, 0x00, (byte) 0xff};
+        assertArrayEquals(expected, written);
+    }
+
     @Test(expected = RecursiveDebthException.class)
     public void maxRecursionShouldThrowRecursiveDebthExceptionTest() {
         serializer = new ObjectSerializer(2);
@@ -100,6 +113,89 @@ public class ObjectSerializerTest {
     public void maxRecursionShouldNotThrowRecursiveDebthExceptionTest() {
         serializer = new ObjectSerializer(2);
         serializer.write(new LegalRecursiveObject());
+    }
+
+    @Test()
+    public void supplyParametersForReadWriteObjectsTest() {
+        readWriteTest(15);
+        readWriteTest(15L);
+        readWriteTest(15.05F);
+        readWriteTest("testString!!!!!! :D");
+        readWriteTest(125.563426346D);
+        readWriteTest((byte) 16);
+        readWriteTest(new IncludeEverythingObject());
+    }
+
+    public void readWriteTest(Object obj) {
+        byte[] written = serializer.write(obj);
+        Object read = serializer.read(written, obj.getClass());
+        assertEquals(obj, read);
+    }
+
+    @Test
+    public void testArrayWrite() {
+        int[] integers = {1, 2, 3};
+        byte[] bytes = serializer.write(integers);
+        byte[] expected = {
+                0, 0, 0, 3, //array length
+                0, 0, 0, 1,//item 1
+                0, 0, 0, 2,//item 2
+                0, 0, 0, 3 //item 3
+        };
+        assertArrayEquals(expected, bytes);
+    }
+
+    @Test
+    public void testListWrite() {
+        List<Integer> integers = Arrays.asList(1, 2, 3);
+        byte[] bytes = serializer.write(integers);
+        byte[] expected = {
+                0, 0, 0, 3, //array length
+                0, 0, 0, 1,//item 1
+                0, 0, 0, 2,//item 2
+                0, 0, 0, 3 //item 3
+        };
+        assertArrayEquals(expected, bytes);
+    }
+
+    @Test
+    public void testPrimitiveArrayRead() {
+        int[] expected = {1, 2, 3};
+        byte[] input = {
+                0, 0, 0, 3, //array length
+                0, 0, 0, 1,//item 1
+                0, 0, 0, 2,//item 2
+                0, 0, 0, 3 //item 3
+        };
+        int[] bytes = serializer.read(input, int[].class);
+        assertArrayEquals(expected, bytes);
+    }
+
+    @Test
+    public void testObjectArrayRead() {
+        IntegerObject[] expected = {new IntegerObject(), new IntegerObject(), new IntegerObject()};
+        byte[] input = {
+                0, 0, 0, 3, //array length
+                (byte) 0xaa, (byte) 0xbb, (byte) 0xcc, (byte) 0xdd,
+                (byte) 0xaa, (byte) 0xbb, (byte) 0xcc, (byte) 0xdd,
+                (byte) 0xaa, (byte) 0xbb, (byte) 0xcc, (byte) 0xdd,
+        };
+        IntegerObject[] parsed = serializer.read(input, IntegerObject[].class);
+        assertArrayEquals(expected, parsed);
+    }
+
+    @Test
+    @Ignore
+    public void testListRead() {
+        List<Integer> expected = Arrays.asList(1, 2, 3);
+        byte[] input = {
+                0, 0, 0, 3, //array length
+                0, 0, 0, 1,//item 1
+                0, 0, 0, 2,//item 2
+                0, 0, 0, 3 //item 3
+        };
+        List<Integer> bytes = serializer.read(input, expected.getClass());
+        assertEquals(expected, bytes);
     }
 
 }

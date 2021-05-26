@@ -1,6 +1,9 @@
 package org.kurodev;
 
 
+import java.lang.reflect.Array;
+import java.util.Collection;
+
 public enum DataType {
     BOOLEAN(1, Boolean.class, boolean.class),
     BYTE(Byte.BYTES, Byte.class, byte.class),
@@ -11,7 +14,9 @@ public enum DataType {
     LONG(Long.BYTES, Long.class, long.class),
     OBJECT(-1, Object.class),
     SHORT(Short.BYTES, Short.class, short.class),
-    STRING(-1, String.class);
+    STRING(-1, String.class),
+    COLLECTION(-1, Collection.class),
+    ARRAY(-1, Array.class);
 
     private final int size;
     private final Class<?>[] clazzes;
@@ -31,13 +36,22 @@ public enum DataType {
     }
 
     public static DataType identify(Class<?> clazz) {
+        if (clazz.isArray()) {
+            return ARRAY;
+        }
         for (DataType value : values()) {
+            if (value == OBJECT) {
+                continue;
+            }
             for (Class<?> aClass : value.clazzes) {
-                if (clazz == aClass) {
+                if (clazz == aClass || aClass.isAssignableFrom(clazz)) {
                     return value;
                 }
 
             }
+        }
+        if (clazz.isArray()) {
+            return COLLECTION;
         }
         return OBJECT;
     }
